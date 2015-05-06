@@ -1,0 +1,267 @@
+/**
+  ******************************************************************************
+  * @file    ks0073_lcd_drv.c
+  * @author  Oliver Westermann
+  * @version V1.0
+  * @date    04.05.2015
+  * @brief   Software for a 20x4 LCD connected via SPI
+  ******************************************************************************
+*/
+
+#include "ks0073_lcd_drv.h"
+
+/* local Variables ----------------------------------------------------------- */
+
+GPIO_InitTypeDef GPIO_InitType;
+SPI_HandleTypeDef SPI_Handle;
+uint8_t buffer = 0x50;
+
+/* local Functions, Declarations --------------------------------------------- */
+
+void DataConvert(uint8_t Data, KS0073_RWTypeDef RW, KS0073_RSTypeDef RS, KS0073_DataTypeDef * buffer);
+uint8_t readAddress();
+uint8_t readData();
+void setDDAddress(uint8_t DDAddress);
+
+/* Functions ----------------------------------------------------------------- */
+
+/**
+  * @brief Init routine of KS0073 Controller, accessed over SPI
+  * 		SPI init, init of GPIO for backlight & chip select
+  * @param Cursor - of Type KS0073_CursorTypeDef, select if Cursor should be visible
+  * @param Blink - of Type KS0073_BlinkTypeDef, select if selected address should blink
+  * @retval None
+ */
+void KS0073_Init(KS0073_CursorTypeDef Cursor, KS0073_BlinkTypeDef Blink)
+{
+	// Initialize & enable backlight
+	KS0073_BLE_CLK_ENABLE();
+	GPIO_InitType.Mode = GPIO_MODE_OUTPUT_PP;
+	GPIO_InitType.Pin = KS0073_BLE_PIN;
+	GPIO_InitType.Pull = GPIO_NOPULL;
+	GPIO_InitType.Speed = GPIO_SPEED_HIGH;
+	HAL_GPIO_Init(KS0073_BLE_PORT, &GPIO_InitType);
+	KS0073_BL_Enable();
+
+	// SPI Initialization
+	SPI_Handle.Instance = KS0073_SPIx;
+	SPI_Handle.Init.Mode = KS0073_SPI_MODE;
+	SPI_Handle.Init.BaudRatePrescaler = KS0073_SPI_BAUDRATEPRESCALER;
+	SPI_Handle.Init.Direction = KS0073_SPI_DIRECTION;
+	SPI_Handle.Init.CLKPolarity = KS0073_SPI_CLK_POLARITY;
+	SPI_Handle.Init.CLKPhase = KS0073_SPI_CLK_PHASE;
+	SPI_Handle.Init.DataSize = KS0073_SPI_DATASIZE;
+	SPI_Handle.Init.FirstBit = KS0073_SPI_FIRSTBIT;
+	SPI_Handle.Init.TIMode = KS0073_SPI_TIMODE;
+	SPI_Handle.Init.CRCCalculation = KS0073_SPI_CRC;
+	SPI_Handle.Init.NSS = KS0073_SPI_NSS;
+	while(HAL_SPI_Init(&SPI_Handle) != HAL_OK)
+	{
+		;
+	}
+	KS0073_SPI_Enable();
+
+	//Enable Chip Select
+	HAL_GPIO_WritePin(KS0073_SPI_NCS_PORT, KS0073_SPI_NCS_PIN, GPIO_PIN_RESET);
+
+	// 8 bit data, RE = 1 (Extended Register)
+	KS0073_Transmit_Byte(0x34, KS0073_RW_CLEAR, KS0073_RS_CLEAR, 2);
+
+	// 4 lines
+	KS0073_Transmit_Byte(0x09, KS0073_RW_CLEAR, KS0073_RS_CLEAR, 2);
+
+	// 8 bit data, RE = 0 (Standard Register)
+	KS0073_Transmit_Byte(0x30, KS0073_RW_CLEAR, KS0073_RS_CLEAR, 2);
+	HAL_Delay(2);
+
+	// enable blink, cursor & display
+	uint8_t setup = 0x0C;
+	if(Cursor == KS0073_CursorOn)
+		setup |= 0x02;
+	if(Blink == KS0073_BlinkOn)
+		setup |= 0x01;
+	KS0073_Transmit_Byte(setup, KS0073_RW_CLEAR, KS0073_RS_CLEAR, 2);
+
+	// clear screen, Cursor to home position (address 0)
+	KS0073_clearScreen();
+
+	// text direction left to right
+	KS0073_Transmit_Byte(0x06, KS0073_RW_CLEAR, KS0073_RS_CLEAR, 2);
+}
+
+/**
+ * @brief DeInitializes SPI and resets GPIO pins
+ */
+extern void KS0073_DeInit()
+{
+	HAL_SPI_DeInit(&SPI_Handle);
+	HAL_GPIO_DeInit(KS0073_BLE_PORT, KS0073_BLE_PIN);
+	HAL_GPIO_DeInit(KS0073_SPI_NCS_PORT, KS0073_SPI_NCS_PIN);
+}
+
+/**
+ * @brief converts a byte to fitting format and transmits it to display
+ * @param Data - data byte to transmit
+ * @param RW - set/reset RW bit (KS0073_RWTypeDef)
+ * @param RS - set/reset RS bit (KS0073_RSTypeDef)
+ * @param Timeout - Timeout in ms
+ */
+void KS0073_Transmit_Byte(uint8_t Data, KS0073_RWTypeDef RW, KS0073_RSTypeDef RS, uint32_t Timeout)
+{
+	KS0073_DataTypeDef buffer;
+	DataConvert(Data, RW, RS, &buffer);
+	HAL_SPI_Transmit(&SPI_Handle, (uint8_t *)&buffer, 3, Timeout);
+}
+
+/**
+ *	Clears screen and returns cursor to home position
+ */
+void KS0073_clearScreen()
+{
+	KS0073_Transmit_Byte(0x01, KS0073_RW_CLEAR, KS0073_RS_CLEAR, 3);
+}
+/**
+ * 	Enables backlight
+ */
+inline void KS0073_BL_Enable()
+{
+	HAL_GPIO_WritePin(KS0073_BLE_PORT, KS0073_BLE_PIN, GPIO_PIN_RESET);
+}
+
+/**
+ * @brief Disables Backlight
+ * Disable wont work as it needs to pull up to 5V (which it can't)
+ *
+ * \todo: change circuit to make it work
+ */
+inline void KS0073_BL_Disable()
+{
+	HAL_GPIO_WritePin(KS0073_BLE_PORT, KS0073_BLE_PIN, GPIO_PIN_SET);
+}
+
+/**
+ * SPI enable
+ */
+inline void KS0073_SPI_Enable()
+{
+	__HAL_SPI_ENABLE(&SPI_Handle);
+}
+/**
+ * SPI Disable
+ */
+inline void KS0073_SPI_Disable()
+{
+	__HAL_SPI_DISABLE(&SPI_Handle);
+}
+
+/**
+  * @brief SPI MSP Init
+  * 		SPI LowLevel Init of all Pin Out/InPuts & Clocks
+  * @param  hspi: pointer to a SPI_HandleTypeDef structure that contains
+  *               the configuration information for SPI module.
+  * @retval None
+  */
+void HAL_SPI_MspInit(SPI_HandleTypeDef *hspi)
+{
+	GPIO_InitTypeDef InitStruct;
+	//Clocks
+	KS0073_SPI_CLK_ENABLE();
+	KS0073_SPI_SCK_CLK_ENABLE();
+	KS0073_SPI_MISO_CLK_ENABLE();
+	KS0073_SPI_MOSI_CLK_ENABLE();
+	KS0073_SPI_NCS_CLK_ENABLE();
+
+	//Pin Setups
+	InitStruct.Mode = GPIO_MODE_AF_PP;
+	InitStruct.Pull = GPIO_PULLDOWN;
+	InitStruct.Speed = GPIO_SPEED_HIGH;
+
+	InitStruct.Pin = KS0073_SPI_SCK_PIN;
+	HAL_GPIO_Init(KS0073_SPI_SCK_PORT, &InitStruct);
+
+	InitStruct.Pin = KS0073_SPI_MOSI_PIN;
+	HAL_GPIO_Init(KS0073_SPI_MOSI_PORT, &InitStruct);
+
+	InitStruct.Pin = KS0073_SPI_MISO_PIN;
+	HAL_GPIO_Init(KS0073_SPI_MISO_PORT, &InitStruct);
+
+	InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
+	InitStruct.Pull = GPIO_NOPULL;
+	HAL_GPIO_Init(KS0073_SPI_NCS_PORT, &InitStruct);
+}
+/**
+  * @brief SPI MSP DeInit
+  * 		SPI LowLevel DeInit of all Pin Out/InPuts & Clocks
+  * @param  hspi: pointer to a SPI_HandleTypeDef structure that contains
+  *               the configuration information for SPI module.
+  * @retval None
+  */
+void HAL_SPI_MspDeInit(SPI_HandleTypeDef *hspi)
+{
+	HAL_GPIO_DeInit(KS0073_SPI_SCK_PORT, KS0073_SPI_SCK_PIN);
+	HAL_GPIO_DeInit(KS0073_SPI_MOSI_PORT, KS0073_SPI_MOSI_PIN);
+	HAL_GPIO_DeInit(KS0073_SPI_MISO_PORT, KS0073_SPI_MISO_PIN);
+	HAL_GPIO_DeInit(KS0073_SPI_NCS_PORT, KS0073_SPI_NCS_PIN);
+}
+
+/* local Functions, Definitions ---------------------------------------------- */
+
+/**
+ * @brief Builds a KS0073_DataTypeDef from Data, RW & RS
+ * @param Data - Input Data, for example a command or a char
+ * @param RW - R/W Bit, 1 for Read-Operations, 0 for Write-Operations
+ * @param RS - Register Select
+ * @param buffer - Pointer to a KS0073_DataTypeDef Element to save the Result
+ */
+void DataConvert(uint8_t Data, KS0073_RWTypeDef RW, KS0073_RSTypeDef RS, KS0073_DataTypeDef * buffer)
+{
+	//Five 1s as Start Bit
+	buffer->start = 0x1F;
+	if(RW == KS0073_RW_SET)
+	{
+		buffer->start |= KS0073_RW_BIT;
+	}
+	if(RS == KS0073_RS_SET)
+	{
+		buffer->start |= KS0073_RS_BIT;
+	}
+	buffer->data_low = Data & 0xF;
+	buffer->data_high = (Data >> 4);
+}
+/**
+ * reads BusyFlag & address
+ * @return Bit 7 - BusyFlag / Bit 6:0 address
+ */
+uint8_t readAddress()
+{
+	uint8_t buffer;
+	buffer = 0x1F;
+	buffer |= KS0073_RW_BIT;
+	HAL_SPI_Transmit(&SPI_Handle, &buffer, 1, 5);
+	buffer = 0;
+	HAL_SPI_TransmitReceive(&SPI_Handle, &buffer, &buffer, 1, 5);
+	return buffer;
+}
+
+/**
+ * reads data from present address
+ * @return data
+ */
+uint8_t readData()
+{
+	uint8_t buffertx, bufferrx;
+	buffertx = 0x1F | KS0073_RW_BIT | KS0073_RS_BIT;
+	HAL_SPI_TransmitReceive(&SPI_Handle, &buffertx, &bufferrx, 1, 5);
+	buffertx = 0x1F;
+	HAL_SPI_TransmitReceive(&SPI_Handle, &buffertx, &bufferrx, 1, 5);
+	return bufferrx;
+}
+/**
+ * sets Address to DDAdress in DisplayRAM
+ * @param DDAddress
+ */
+void setDDAddress(uint8_t DDAddress)
+{
+	DDAddress |= 0x80;
+	KS0073_Transmit_Byte(DDAddress, KS0073_RW_CLEAR, KS0073_RS_CLEAR, 5);
+}
