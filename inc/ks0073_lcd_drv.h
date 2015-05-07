@@ -132,7 +132,7 @@ typedef enum
 typedef enum
 {
 	KS0073_BlinkOff = 0x00,
-	KS0073_BlinkOn = 0x00
+	KS0073_BlinkOn = 0x01
 }KS0073_BlinkTypeDef;
 
 /* Exported constants --------------------------------------------------------*/
