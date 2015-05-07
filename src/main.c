@@ -20,6 +20,28 @@ void SystemClock_Config(void);
 
 /* Private functions ---------------------------------------------------------*/
 
+
+const KS0073_FontTypeDef SpInv1a = {
+		.line[0] = 0x01,
+		.line[1] = 0x03,
+		.line[2] = 0x07,
+		.line[3] = 0x0D,
+		.line[4] = 0x0F,
+		.line[5] = 0x02,
+		.line[6] = 0x05,
+		.line[7] = 0x0A,
+};
+
+const KS0073_FontTypeDef SpInv1b = {
+		.line[0] = 0x10,
+		.line[1] = 0x18,
+		.line[2] = 0x1C,
+		.line[3] = 0x16,
+		.line[4] = 0x1E,
+		.line[5] = 0x08,
+		.line[6] = 0x14,
+		.line[7] = 0x0A,
+};
 /**
   * @brief  Main program
   */
@@ -50,6 +72,13 @@ int main(void)
 	KS0073_puts("for STM32 Family");
 	KS0073_gotoxy(0, 2);
 	KS0073_puts("Software by Olli W.");
+
+	/* grafik test */
+	KS0073_setFont(1, &SpInv1a);
+	KS0073_setFont(2, &SpInv1b);
+	KS0073_gotoxy(0, 0);
+	KS0073_putc(1);
+	KS0073_putc(2);
 	while (1)
 	{
 

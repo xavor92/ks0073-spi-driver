@@ -10,6 +10,8 @@
 
 #include "ks0073_lcd_drv.h"
 
+
+
 /* local Variables ----------------------------------------------------------- */
 
 GPIO_InitTypeDef GPIO_InitType;
@@ -80,9 +82,13 @@ void KS0073_Init(KS0073_CursorTypeDef Cursor, KS0073_BlinkTypeDef Blink)
 	// enable blink, cursor & display
 	uint8_t setup = 0x0C;
 	if(Cursor == KS0073_CursorOn)
+	{
 		setup |= 0x02;
+	}
 	if(Blink == KS0073_BlinkOn)
+	{
 		setup |= 0x01;
+	}
 	KS0073_Transmit_Byte(setup, KS0073_RW_CLEAR, KS0073_RS_CLEAR, 2);
 
 	// clear screen, Cursor to home position (address 0)
@@ -199,6 +205,24 @@ uint8_t KS0073_readAddress()
 	HAL_SPI_TransmitReceive(&SPI_Handle, &buffer, &buffer, 1, 5);
 	return buffer;
 }
+
+/**
+ * Writes a font given by font into CG Ram at address
+ * @param address address in CG RAM, possible Values 0:7
+ * @param font - pointer to elemtent of type KS0073_FontTypeDef
+ */
+void KS0073_setFont(uint8_t address, const KS0073_FontTypeDef * font)
+{
+	uint8_t byte, line;
+	byte = 0x40;
+	byte |= (address << 3);
+	KS0073_Transmit_Byte(byte, KS0073_RW_CLEAR, KS0073_RS_CLEAR, 1);
+	for(line = 0; line < 8; line++)
+	{
+		KS0073_putc(font->line[line]);
+	}
+}
+
 
 /**
  * 	Enables backlight

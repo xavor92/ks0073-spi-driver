@@ -31,6 +31,8 @@
  * To Compile you need to provide HAL Library for your Controller
  *
  * You need to change the settings in ks0073_lcd_drv.h to apply to your setup.
+ *
+ * \todo add graphic stuff
  */
 /** \addtogroup KS0073 Driver Software
  * @{
@@ -111,6 +113,11 @@ typedef struct
 	uint8_t data_low, data_high;
 } KS0073_DataTypeDef;
 
+typedef struct
+{
+	uint8_t line[8];
+} KS0073_FontTypeDef;
+
 typedef enum
 {
 	KS0073_RW_SET = 0x01,
@@ -148,6 +155,7 @@ extern void KS0073_newLine();
 extern void KS0073_putc(char newchar);
 extern void KS0073_puts(char * nextchar);
 extern uint8_t KS0073_readAddress();
+extern void KS0073_setFont(uint8_t address, const KS0073_FontTypeDef * font);
 
 extern inline void KS0073_BL_Enable();
 extern inline void KS0073_BL_Disable();
