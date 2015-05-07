@@ -32,6 +32,11 @@
 
 /* Defines -------------------------------------------------------------------*/
 
+//Behavior
+#define WRAPLINES							//Uncomment to disable Linewrap
+#define LINES 							4	//LineCount
+#define LINE_LENGTH 					20	//LineLength
+
 //Clocks
 #define KS0073_SPI_CLK_ENABLE()			__HAL_RCC_SPI1_CLK_ENABLE()
 #define KS0073_SPI_CLK_DISABLE()		__HAL_RCC_SPI1_CLK_DISABLE()
@@ -118,6 +123,11 @@ extern void KS0073_Init(KS0073_CursorTypeDef Cursor, KS0073_BlinkTypeDef Blink);
 extern void KS0073_DeInit();
 extern void KS0073_Transmit_Byte(uint8_t Data, KS0073_RWTypeDef RW, KS0073_RSTypeDef RS, uint32_t Timeout);
 extern void KS0073_clearScreen();
+extern void KS0073_gotoxy(uint8_t posx, uint8_t posy);
+extern void KS0073_newLine();
+extern void KS0073_putc(char newchar);
+extern void KS0073_puts(char * nextchar);
+extern uint8_t KS0073_readAddress();
 
 extern inline void KS0073_BL_Enable();
 extern inline void KS0073_BL_Disable();

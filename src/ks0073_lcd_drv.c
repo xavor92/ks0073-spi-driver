@@ -19,9 +19,9 @@ uint8_t buffer = 0x50;
 /* local Functions, Declarations --------------------------------------------- */
 
 void DataConvert(uint8_t Data, KS0073_RWTypeDef RW, KS0073_RSTypeDef RS, KS0073_DataTypeDef * buffer);
-uint8_t readAddress();
 uint8_t readData();
 void setDDAddress(uint8_t DDAddress);
+uint8_t readBusyFlag();
 
 /* Functions ----------------------------------------------------------------- */
 
@@ -65,10 +65,13 @@ void KS0073_Init(KS0073_CursorTypeDef Cursor, KS0073_BlinkTypeDef Blink)
 	HAL_GPIO_WritePin(KS0073_SPI_NCS_PORT, KS0073_SPI_NCS_PIN, GPIO_PIN_RESET);
 
 	// 8 bit data, RE = 1 (Extended Register)
-	KS0073_Transmit_Byte(0x34, KS0073_RW_CLEAR, KS0073_RS_CLEAR, 2);
+	KS0073_Transmit_Byte(0x3C, KS0073_RW_CLEAR, KS0073_RS_CLEAR, 2);
 
-	// 4 lines
-	KS0073_Transmit_Byte(0x09, KS0073_RW_CLEAR, KS0073_RS_CLEAR, 2);
+	// 4 lines?
+	if(LINES == 4)
+	{
+		KS0073_Transmit_Byte(0x09, KS0073_RW_CLEAR, KS0073_RS_CLEAR, 2);
+	}
 
 	// 8 bit data, RE = 0 (Standard Register)
 	KS0073_Transmit_Byte(0x30, KS0073_RW_CLEAR, KS0073_RS_CLEAR, 2);
@@ -120,6 +123,80 @@ void KS0073_clearScreen()
 {
 	KS0073_Transmit_Byte(0x01, KS0073_RW_CLEAR, KS0073_RS_CLEAR, 3);
 }
+
+/**
+ * Set Cursor to DD Address given by params
+ * @param posx - column 0:19
+ * @param posy - row 0:3
+ */
+extern void KS0073_gotoxy(uint8_t posx, uint8_t posy)
+{
+	uint8_t ddAddress = posy * 0x20;
+	ddAddress += posx;
+	setDDAddress(ddAddress);
+}
+
+/**
+ * jumps into next line, rolls around after four lines
+ */
+extern void KS0073_newLine()
+{
+	uint8_t address = KS0073_readAddress();//get address
+	address /= 0x20;				//get line from address
+	KS0073_gotoxy(0, address +1);	//set to line +1
+}
+
+/**
+ * Puts char to Display
+ * Processes '\n' chars and wraps lines if enabled
+ * @param newchar - Char to be send
+ */
+extern void KS0073_putc(char newchar)
+{
+	uint8_t pos = KS0073_readAddress();
+	if(newchar == '\n')
+	{
+		KS0073_newLine();
+	} else
+	{
+		#ifdef WRAPLINES
+			if(pos % 0x20 >= LINE_LENGTH)
+			{
+				KS0073_newLine();
+			}
+		#endif
+		KS0073_Transmit_Byte(newchar, KS0073_RW_CLEAR, KS0073_RS_SET, 1);
+	}
+}
+
+/**
+ * Puts a string to the display on a char by char base
+ * @param nextchar - string / charpointer
+ */
+extern void KS0073_puts(char * nextchar)
+{
+	while(*nextchar)
+	{
+		KS0073_putc(*nextchar);
+		nextchar++;
+	}
+}
+
+/**
+ * reads BusyFlag & address
+ * @return Bit 7 - BusyFlag / Bit 6:0 address
+ */
+uint8_t KS0073_readAddress()
+{
+	uint8_t buffer;
+	buffer = 0x1F;
+	buffer |= KS0073_RW_BIT;
+	HAL_SPI_Transmit(&SPI_Handle, &buffer, 1, 5);
+	buffer = 0;
+	HAL_SPI_TransmitReceive(&SPI_Handle, &buffer, &buffer, 1, 5);
+	return buffer;
+}
+
 /**
  * 	Enables backlight
  */
@@ -130,9 +207,6 @@ inline void KS0073_BL_Enable()
 
 /**
  * @brief Disables Backlight
- * Disable wont work as it needs to pull up to 5V (which it can't)
- *
- * \todo: change circuit to make it work
  */
 inline void KS0073_BL_Disable()
 {
@@ -228,20 +302,6 @@ void DataConvert(uint8_t Data, KS0073_RWTypeDef RW, KS0073_RSTypeDef RS, KS0073_
 	buffer->data_low = Data & 0xF;
 	buffer->data_high = (Data >> 4);
 }
-/**
- * reads BusyFlag & address
- * @return Bit 7 - BusyFlag / Bit 6:0 address
- */
-uint8_t readAddress()
-{
-	uint8_t buffer;
-	buffer = 0x1F;
-	buffer |= KS0073_RW_BIT;
-	HAL_SPI_Transmit(&SPI_Handle, &buffer, 1, 5);
-	buffer = 0;
-	HAL_SPI_TransmitReceive(&SPI_Handle, &buffer, &buffer, 1, 5);
-	return buffer;
-}
 
 /**
  * reads data from present address
@@ -265,3 +325,17 @@ void setDDAddress(uint8_t DDAddress)
 	DDAddress |= 0x80;
 	KS0073_Transmit_Byte(DDAddress, KS0073_RW_CLEAR, KS0073_RS_CLEAR, 5);
 }
+
+/**
+ * Checks BusyFlag
+ * @return BusyFlag - 1 = Busy, 0 = NotBusy
+ */
+uint8_t readBusyFlag()
+{
+	if(KS0073_readAddress() & 0x80) //if BusyFlag set
+	{
+		return 1;
+	}
+	return 0;
+}
+

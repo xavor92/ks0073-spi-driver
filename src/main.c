@@ -25,8 +25,6 @@ void SystemClock_Config(void);
   */
 int main(void)
 {
-	/* This sample code shows how to use GPIO HAL API to toggle LED2 IO
-	in an infinite loop. */
 
 	/* STM32F103xB HAL library initialization:
 	   - Configure the Flash prefetch
@@ -43,15 +41,18 @@ int main(void)
 	/* Configure the system clock to 64 MHz */
 	SystemClock_Config();
 
+	/* Init Display */
 	KS0073_Init(KS0073_CursorOn, KS0073_BlinkOn);
-	KS0073_Transmit_Byte('t', KS0073_RW_CLEAR, KS0073_RS_SET, 100);
-	KS0073_Transmit_Byte('e', KS0073_RW_CLEAR, KS0073_RS_SET, 100);
-	KS0073_Transmit_Byte('s', KS0073_RW_CLEAR, KS0073_RS_SET, 100);
-	KS0073_Transmit_Byte('t', KS0073_RW_CLEAR, KS0073_RS_SET, 100);
-  /* -3- Toggle IO in an infinite loop */
+
+	/* Sample Text */
+	KS0073_puts("KS0073 Display\nusing SPI Inferface\n");
+	KS0073_newLine();
+	KS0073_puts("for STM32 Family");
+	KS0073_gotoxy(0, 2);
+	KS0073_puts("Software by Olli W.");
 	while (1)
 	{
-		HAL_Delay(1000);
+
 	}
 }
 
