@@ -131,6 +131,8 @@ void KS0073_Transmit_Byte(uint8_t Data, KS0073_RWTypeDef RW, KS0073_RSTypeDef RS
 void KS0073_clearScreen()
 {
 	KS0073_Transmit_Byte(0x01, KS0073_RW_CLEAR, KS0073_RS_CLEAR, 3);
+	while(readBusyFlag())
+		;
 }
 
 /**
@@ -219,7 +221,7 @@ void KS0073_setFont(uint8_t address, const KS0073_FontTypeDef * font)
 	KS0073_Transmit_Byte(byte, KS0073_RW_CLEAR, KS0073_RS_CLEAR, 1);
 	for(line = 0; line < 8; line++)
 	{
-		KS0073_putc(font->line[line]);
+		KS0073_Transmit_Byte(font->line[line], KS0073_RW_CLEAR, KS0073_RS_SET, 1);
 	}
 }
 

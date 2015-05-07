@@ -21,7 +21,7 @@ void SystemClock_Config(void);
 /* Private functions ---------------------------------------------------------*/
 
 
-const KS0073_FontTypeDef SpInv1a = {
+const KS0073_FontTypeDef SpInv1al = {
 		.line[0] = 0x01,
 		.line[1] = 0x03,
 		.line[2] = 0x07,
@@ -32,7 +32,7 @@ const KS0073_FontTypeDef SpInv1a = {
 		.line[7] = 0x0A,
 };
 
-const KS0073_FontTypeDef SpInv1b = {
+const KS0073_FontTypeDef SpInv1ar = {
 		.line[0] = 0x10,
 		.line[1] = 0x18,
 		.line[2] = 0x1C,
@@ -42,6 +42,74 @@ const KS0073_FontTypeDef SpInv1b = {
 		.line[6] = 0x14,
 		.line[7] = 0x0A,
 };
+const KS0073_FontTypeDef SpInv1bl = {
+		.line[0] = 0x01,
+		.line[1] = 0x03,
+		.line[2] = 0x07,
+		.line[3] = 0x0D,
+		.line[4] = 0x0F,
+		.line[5] = 0x05,
+		.line[6] = 0x08,
+		.line[7] = 0x04,
+};
+
+const KS0073_FontTypeDef SpInv1br = {
+		.line[0] = 0x10,
+		.line[1] = 0x18,
+		.line[2] = 0x1C,
+		.line[3] = 0x16,
+		.line[4] = 0x1E,
+		.line[5] = 0x14,
+		.line[6] = 0x02,
+		.line[7] = 0x04,
+};
+
+const KS0073_FontTypeDef SpInv2al = {
+		.line[0] = 0x04,
+		.line[1] = 0x12,
+		.line[2] = 0x17,
+		.line[3] = 0x1D,
+		.line[4] = 0x1F,
+		.line[5] = 0x0F,
+		.line[6] = 0x04,
+		.line[7] = 0x08,
+};
+
+const KS0073_FontTypeDef SpInv2ar = {
+		.line[0] = 0x04,
+		.line[1] = 0x09,
+		.line[2] = 0x1D,
+		.line[3] = 0x17,
+		.line[4] = 0x1F,
+		.line[5] = 0x1E,
+		.line[6] = 0x04,
+		.line[7] = 0x02,
+};
+
+const KS0073_FontTypeDef SpInv2bl = {
+		.line[0] = 0x04,
+		.line[1] = 0x02,
+		.line[2] = 0x07,
+		.line[3] = 0x0D,
+		.line[4] = 0x1F,
+		.line[5] = 0x17,
+		.line[6] = 0x14,
+		.line[7] = 0x03,
+};
+
+const KS0073_FontTypeDef SpInv2br = {
+		.line[0] = 0x04,
+		.line[1] = 0x08,
+		.line[2] = 0x1C,
+		.line[3] = 0x16,
+		.line[4] = 0x1F,
+		.line[5] = 0x1D,
+		.line[6] = 0x05,
+		.line[7] = 0x18,
+};
+
+
+
 /**
   * @brief  Main program
   */
@@ -64,7 +132,7 @@ int main(void)
 	SystemClock_Config();
 
 	/* Init Display */
-	KS0073_Init(KS0073_CursorOn, KS0073_BlinkOn);
+	KS0073_Init(KS0073_CursorOff, KS0073_BlinkOff);
 
 	/* Sample Text */
 	KS0073_puts("KS0073 Display\nusing SPI Inferface\n");
@@ -74,14 +142,32 @@ int main(void)
 	KS0073_puts("Software by Olli W.");
 
 	/* grafik test */
-	KS0073_setFont(1, &SpInv1a);
-	KS0073_setFont(2, &SpInv1b);
-	KS0073_gotoxy(0, 0);
-	KS0073_putc(1);
-	KS0073_putc(2);
+	KS0073_setFont(0, &SpInv1al);
+	KS0073_setFont(1, &SpInv1ar);
+	KS0073_setFont(2, &SpInv1bl);
+	KS0073_setFont(3, &SpInv1br);
+	KS0073_setFont(4, &SpInv2al);
+	KS0073_setFont(5, &SpInv2ar);
+	KS0073_setFont(6, &SpInv2bl);
+	KS0073_setFont(7, &SpInv2br);
+
+	KS0073_clearScreen();
 	while (1)
 	{
-
+		KS0073_gotoxy(7,1);
+		KS0073_putc(0);
+		KS0073_putc(1);
+		KS0073_gotoxy(11,2);
+		KS0073_putc(4);
+		KS0073_putc(5);
+		HAL_Delay(500);
+		KS0073_gotoxy(7,1);
+		KS0073_putc(2);
+		KS0073_putc(3);
+		KS0073_gotoxy(11,2);
+		KS0073_putc(6);
+		KS0073_putc(7);
+		HAL_Delay(500);
 	}
 }
 
