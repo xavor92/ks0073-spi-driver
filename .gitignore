@@ -34,13 +34,13 @@
 #my files
 /CMSIS
 /HAL_Driver
-/html
 /Utilities
 /Debug
-.cproject
-.project
+*.cproject
+*.project
 /.settings
-.ld
-.db
-.tmp
-.doxyfile
+*.ld
+*.gitignore~
+*.db
+*.tmp
+*.doxyfile

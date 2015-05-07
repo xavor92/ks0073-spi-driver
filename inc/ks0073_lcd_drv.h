@@ -23,6 +23,18 @@
   ******************************************************************************
 */
 
+/**
+ * \mainpage KS0073 SPI Driver on STM32
+ *
+ * Driver to use KS0073 Display driver on STM32Family
+ *
+ * To Compile you need to provide HAL Library for your Controller
+ *
+ * You need to change the settings in ks0073_lcd_drv.h to apply to your setup.
+ */
+/** \addtogroup KS0073 Driver Software
+ * @{
+ */
 #ifndef KS0073_LCD_DRV_H_
 #define KS0073_LCD_DRV_H_
 
@@ -32,10 +44,17 @@
 
 /* Defines -------------------------------------------------------------------*/
 
+/**
+ * \addtogroup Configuration
+ */
+//@{
 //Behavior
-#define WRAPLINES							//Uncomment to disable Linewrap
-#define LINES 							4	//LineCount
-#define LINE_LENGTH 					20	//LineLength
+/** Uncomment to not wrap lines in KS0073_putc()*/
+#define WRAPLINES
+/** Number of lines of your Display */
+#define LINES 							4	//!LineCount
+/** line length of your Display */
+#define LINE_LENGTH 					20	//!LineLength
 
 //Clocks
 #define KS0073_SPI_CLK_ENABLE()			__HAL_RCC_SPI1_CLK_ENABLE()
@@ -83,6 +102,7 @@
 #define KS0073_RW_BIT 					0x20
 #define KS0073_RS_BIT					0x40
 
+//@}
 /* Exported types ------------------------------------------------------------*/
 
 typedef struct
@@ -136,6 +156,10 @@ extern inline void KS0073_SPI_Disable();
 
 extern void HAL_SPI_MspInit(SPI_HandleTypeDef *hspi);
 extern void HAL_SPI_MspDeInit(SPI_HandleTypeDef *hspi);
+
+/**
+ * @}
+ */
 
 #endif /* KS0073_LCD_DRV_H_ */
 

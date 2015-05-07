@@ -88,6 +88,9 @@ void KS0073_Init(KS0073_CursorTypeDef Cursor, KS0073_BlinkTypeDef Blink)
 	// clear screen, Cursor to home position (address 0)
 	KS0073_clearScreen();
 
+	while(readBusyFlag())
+		;
+
 	// text direction left to right
 	KS0073_Transmit_Byte(0x06, KS0073_RW_CLEAR, KS0073_RS_CLEAR, 2);
 }
