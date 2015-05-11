@@ -175,6 +175,8 @@ extern uint8_t KS0073_readAddress();
 #ifndef KS0073_NO_DMA
 extern void KS0073_DMA_RX_IRQHandler(void);
 extern void KS0073_DMA_TX_IRQHandler(void);
+
+extern void KS0073_DMA_Test(void);
 #endif //KS0073_NO_DMA
 
 extern inline void KS0073_BL_Enable();

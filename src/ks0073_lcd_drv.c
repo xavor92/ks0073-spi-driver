@@ -29,6 +29,23 @@ uint8_t readBusyFlag();
 
 /* Functions ----------------------------------------------------------------- */
 
+
+extern void KS0073_DMA_Test(void)
+{
+	KS0073_DataTypeDef buffer[15];
+	uint8_t i = 0;
+	char Test[] = "SPI DMA Testst";
+	char * Testptr = Test;
+	while (*Testptr)
+	{
+		DataConvert((uint8_t) *Testptr, KS0073_RW_CLEAR, KS0073_RS_SET, &buffer[i]);
+		i++;
+		Testptr++;
+	}
+	HAL_SPI_Transmit_DMA(&SPI_Handle, (uint8_t * )&buffer, 3 * (i) );
+	//HAL_SPI_Transmit(&SPI_Handle, (uint8_t *)&buffer, 3, Timeout);
+}
+
 /**
   * @brief Init routine of KS0073 Controller, accessed over SPI
   * 		SPI init, init of GPIO for backlight & chip select
@@ -92,9 +109,6 @@ void KS0073_Init(KS0073_CursorTypeDef Cursor, KS0073_BlinkTypeDef Blink)
 	// clear screen, Cursor to home position (address 0)
 	KS0073_clearScreen();
 
-	while(readBusyFlag())
-		;
-
 	// text direction left to right
 	KS0073_Transmit_Byte(0x06, KS0073_RW_CLEAR, KS0073_RS_CLEAR, 2);
 }
@@ -129,6 +143,8 @@ void KS0073_Transmit_Byte(uint8_t Data, KS0073_RWTypeDef RW, KS0073_RSTypeDef RS
 void KS0073_clearScreen()
 {
 	KS0073_Transmit_Byte(0x01, KS0073_RW_CLEAR, KS0073_RS_CLEAR, 3);
+	while(readBusyFlag())
+			;
 }
 
 /**
@@ -286,9 +302,24 @@ void HAL_SPI_MspInit(SPI_HandleTypeDef *hspi)
 
 	__HAL_LINKDMA(hspi, hdmatx,hdma_tx );
 
-	HAL_NVIC_SetPriority(KS0073_DMA_TX_IRQn, 1 , 1);
+	hdma_rx.Instance                 = KS0073_DMA_RX_CHANNEL;
 
+	hdma_rx.Init.Direction           = DMA_PERIPH_TO_MEMORY;
+	hdma_rx.Init.PeriphInc           = DMA_PINC_DISABLE;
+	hdma_rx.Init.MemInc              = DMA_MINC_ENABLE;
+	hdma_rx.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
+	hdma_rx.Init.MemDataAlignment    = DMA_MDATAALIGN_BYTE;
+	hdma_rx.Init.Mode                = DMA_NORMAL;
+	hdma_rx.Init.Priority            = DMA_PRIORITY_HIGH;
+
+	HAL_DMA_Init(&hdma_rx);
+	__HAL_LINKDMA(hspi, hdmarx, hdma_rx);
+
+	HAL_NVIC_SetPriority(KS0073_DMA_TX_IRQn, 1 , 1);
 	HAL_NVIC_EnableIRQ( KS0073_DMA_TX_IRQn);
+
+    HAL_NVIC_SetPriority(KS0073_DMA_RX_IRQn, 1, 0);
+    HAL_NVIC_EnableIRQ(KS0073_DMA_RX_IRQn);
 
 #endif //KS0073_NO_DMA
 }
