@@ -16,6 +16,10 @@ GPIO_InitTypeDef GPIO_InitType;
 SPI_HandleTypeDef SPI_Handle;
 uint8_t buffer = 0x50;
 
+#ifndef KS0073_NO_DMA
+DMA_HandleTypeDef hdma_rx, hdma_tx;
+#endif //KS0073_NO_DMA
+
 /* local Functions, Declarations --------------------------------------------- */
 
 void DataConvert(uint8_t Data, KS0073_RWTypeDef RW, KS0073_RSTypeDef RS, KS0073_DataTypeDef * buffer);
@@ -265,7 +269,31 @@ void HAL_SPI_MspInit(SPI_HandleTypeDef *hspi)
 	InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
 	InitStruct.Pull = GPIO_NOPULL;
 	HAL_GPIO_Init(KS0073_SPI_NCS_PORT, &InitStruct);
+
+
+#ifndef KS0073_NO_DMA
+	KS0073_DMA_CLK_ENABLE();
+	hdma_tx.Instance 					= KS0073_DMA_TX_CHANNEL;
+	hdma_tx.Init.Direction				= DMA_MEMORY_TO_PERIPH;
+	hdma_tx.Init.PeriphInc				= DMA_PINC_DISABLE;
+	hdma_tx.Init.MemInc					= DMA_MINC_ENABLE;
+	hdma_tx.Init.PeriphDataAlignment 	= DMA_PDATAALIGN_BYTE;
+	hdma_tx.Init.MemDataAlignment    	= DMA_MDATAALIGN_BYTE;
+	hdma_tx.Init.Mode                	= DMA_NORMAL;
+	hdma_tx.Init.Priority            	= DMA_PRIORITY_LOW;
+
+	HAL_DMA_Init(&hdma_tx);
+
+	__HAL_LINKDMA(hspi, hdmatx,hdma_tx );
+
+	HAL_NVIC_SetPriority(KS0073_DMA_TX_IRQn, 1 , 1);
+
+	HAL_NVIC_EnableIRQ( KS0073_DMA_TX_IRQn);
+
+#endif //KS0073_NO_DMA
 }
+
+
 /**
   * @brief SPI MSP DeInit
   * 		SPI LowLevel DeInit of all Pin Out/InPuts & Clocks
@@ -279,8 +307,37 @@ void HAL_SPI_MspDeInit(SPI_HandleTypeDef *hspi)
 	HAL_GPIO_DeInit(KS0073_SPI_MOSI_PORT, KS0073_SPI_MOSI_PIN);
 	HAL_GPIO_DeInit(KS0073_SPI_MISO_PORT, KS0073_SPI_MISO_PIN);
 	HAL_GPIO_DeInit(KS0073_SPI_NCS_PORT, KS0073_SPI_NCS_PIN);
+	HAL_SPI_DeInit( hspi );
+
+#ifndef KS0073_NO_DMA
+	KS0073_DMA_CLK_ENABLE();
+
+	HAL_DMA_DeInit(&hdma_tx);
+
+	HAL_NVIC_DisableIRQ(KS0073_DMA_TX_IRQn);
+#endif //KS0073_NO_DMA
+}
+#ifndef KS0073_NO_DMA
+/**
+  * @brief  This function handles DMA Rx interrupt request.
+  * @param  None
+  * @retval None
+  */
+void SPIx_DMA_RX_IRQHandler(void)
+{
+  HAL_DMA_IRQHandler( SPI_Handle.hdmarx);
 }
 
+/**
+  * @brief  This function handles DMA Tx interrupt request.
+  * @param  None
+  * @retval None
+  */
+void SPIx_DMA_TX_IRQHandler(void)
+{
+  HAL_DMA_IRQHandler( SPI_Handle.hdmatx);
+}
+#endif //KS0073_NO_DMA
 /* local Functions, Definitions ---------------------------------------------- */
 
 /**

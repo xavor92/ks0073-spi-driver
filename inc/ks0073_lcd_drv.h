@@ -48,6 +48,11 @@
  * \addtogroup Configuration
  */
 //@{
+
+//Comment to disable use of DMA
+//#define KS0073_NO_DMA
+
+
 //Behavior
 /** Uncomment to not wrap lines in KS0073_putc()*/
 #define WRAPLINES
@@ -57,6 +62,11 @@
 #define LINE_LENGTH 					20	//!LineLength
 
 //Clocks
+#ifndef KS0073_NO_DMA
+#define KS0073_DMA_CLK_ENABLE()			__HAL_RCC_DMA1_CLK_ENABLE()
+#define KS0073_DMA_CLK_DISABLE()		__HAL_RCC_DMA1_CLK_DISABLE()
+#endif //KS0073_NO_DMA
+
 #define KS0073_SPI_CLK_ENABLE()			__HAL_RCC_SPI1_CLK_ENABLE()
 #define KS0073_SPI_CLK_DISABLE()		__HAL_RCC_SPI1_CLK_DISABLE()
 #define KS0073_BLE_CLK_ENABLE()			__HAL_RCC_GPIOC_CLK_ENABLE()
@@ -101,6 +111,19 @@
 //Bit Positions
 #define KS0073_RW_BIT 					0x20
 #define KS0073_RS_BIT					0x40
+
+#ifndef KS0073_NO_DMA
+//DMA Config
+#define KS0073_DMA_RX_CHANNEL			DMA1_Channel2
+#define KS0073_DMA_TX_CHANNEL			DMA1_Channel3
+
+#define KS0073_DMA_RX_IRQn				DMA1_Channel2_IRQn
+#define KS0073_DMA_TX_IRQn				DMA1_Channel3_IRQn
+
+#define KS0073_DMA_RX_IRQHandler		DMA1_Channel2_IRQHandler
+#define KS0073_DMA_TX_IRQHandler		DMA1_Channel2_IRQHandler
+
+#endif //KS0073_NO_DMA
 
 //@}
 /* Exported types ------------------------------------------------------------*/
@@ -148,6 +171,11 @@ extern void KS0073_newLine();
 extern void KS0073_putc(char newchar);
 extern void KS0073_puts(char * nextchar);
 extern uint8_t KS0073_readAddress();
+
+#ifndef KS0073_NO_DMA
+extern void KS0073_DMA_RX_IRQHandler(void);
+extern void KS0073_DMA_TX_IRQHandler(void);
+#endif //KS0073_NO_DMA
 
 extern inline void KS0073_BL_Enable();
 extern inline void KS0073_BL_Disable();
