@@ -121,7 +121,7 @@
 #define KS0073_DMA_TX_IRQn				DMA1_Channel3_IRQn
 
 #define KS0073_DMA_RX_IRQHandler		DMA1_Channel2_IRQHandler
-#define KS0073_DMA_TX_IRQHandler		DMA1_Channel2_IRQHandler
+#define KS0073_DMA_TX_IRQHandler		DMA1_Channel3_IRQHandler
 
 #endif //KS0073_NO_DMA
 
@@ -132,6 +132,7 @@ typedef struct
 {
 	uint8_t start;
 	uint8_t data_low, data_high;
+	uint8_t delay;
 } KS0073_DataTypeDef;
 
 typedef enum

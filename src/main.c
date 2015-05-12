@@ -44,20 +44,22 @@ int main(void)
 
 	/* Init Display */
 	KS0073_Init(KS0073_CursorOn, KS0073_BlinkOn);
-	HAL_Delay(1000);
-	KS0073_DMA_Test();
-	/* Sample Text */
-	/*KS0073_puts("KS0073 Display\nusing SPI Inferface\n");
-	KS0073_newLine();
-	KS0073_puts("for STM32 Family");
-	KS0073_gotoxy(0, 2);
-	KS0073_puts("Software by Olli W.");
-	KS0073_gotoxy(0,0);
-	KS0073_clearScreen();
-	KS0073_DMA_Test();*/
+	GPIO_InitTypeDef ButtonInit;
+	ButtonInit.Mode = GPIO_MODE_INPUT;
+	ButtonInit.Pin = GPIO_PIN_13;
+	ButtonInit.Pull = GPIO_NOPULL;
+	ButtonInit.Speed = GPIO_SPEED_HIGH;
+
+	HAL_GPIO_Init(GPIOC, &ButtonInit);
+	__HAL_RCC_GPIOC_CLK_ENABLE();
+
 	while (1)
 	{
-
+		if(!HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13))
+		{
+			KS0073_DMA_Test();
+			HAL_Delay(1000);
+		}
 	}
 }
 
@@ -109,4 +111,9 @@ void SystemClock_Config(void)
     /* Initialization Error */
     while(1);
   }
+}
+
+void assert_failed(uint8_t* file, uint32_t line)
+{
+	line = *file;
 }
