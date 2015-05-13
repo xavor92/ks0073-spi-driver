@@ -32,7 +32,7 @@ uint8_t readBusyFlag();
 
 extern void KS0073_DMA_Test(void)
 {
-	KS0073_DataTypeDef buffer[15];
+	static KS0073_DataTypeDef buffer[15];
 	uint8_t i = 0;
 	char Test[] = "uuuuuuuuuuuuu";
 	char * Testptr = Test;
@@ -43,8 +43,6 @@ extern void KS0073_DMA_Test(void)
 		Testptr++;
 	}
 	HAL_SPI_Transmit_DMA(&SPI_Handle, (uint8_t * )&buffer, 4 * (i) );
-	//\todo fix this :/
-	while(SPI_Handle.State == HAL_SPI_STATE_BUSY_TX || SPI_Handle.State == HAL_SPI_STATE_BUSY_TX_RX);
 }
 
 /**
