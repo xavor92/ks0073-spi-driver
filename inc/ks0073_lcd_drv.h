@@ -179,7 +179,6 @@ extern uint8_t KS0073_readAddress();
 extern void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi);
 extern void KS0073_DMA_RX_IRQHandler(void);
 extern void KS0073_DMA_TX_IRQHandler(void);
-extern uint32_t getStoppuhr();
 extern HAL_StatusTypeDef KS0073_puts_dma(char * nextchar);
 #endif //KS0073_NO_DMA
 

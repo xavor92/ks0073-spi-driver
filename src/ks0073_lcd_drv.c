@@ -14,7 +14,6 @@
 
 GPIO_InitTypeDef GPIO_InitType;
 SPI_HandleTypeDef SPI_Handle;
-uint32_t start_tick, stop_tick;
 
 #ifndef KS0073_NO_DMA
 DMA_HandleTypeDef hdma_rx, hdma_tx;
@@ -32,17 +31,10 @@ uint8_t readBusyFlag();
 
 /* Functions ----------------------------------------------------------------- */
 
-
-uint32_t getStoppuhr()
-{
-	return stop_tick - start_tick;
-};
-
 HAL_StatusTypeDef KS0073_puts_dma(char * nextchar)
 {
 	if(SPI_Handle.State == HAL_SPI_STATE_READY)
 	{
-		start_tick = HAL_GetTick();
 		dma_tx_nextchar = nextchar;
 		dma_tx_buffer_counter = 0;
 		while(*dma_tx_nextchar && dma_tx_buffer_counter < DMA_TX_BUFFER_SIZE)
@@ -211,13 +203,11 @@ extern void KS0073_putc(char newchar)
  */
 extern void KS0073_puts(char * nextchar)
 {
-	start_tick = HAL_GetTick();
 	while(*nextchar)
 	{
 		KS0073_putc(*nextchar);
 		nextchar++;
 	}
-	stop_tick = HAL_GetTick();
 }
 
 /**
@@ -381,12 +371,7 @@ void HAL_SPI_MspDeInit(SPI_HandleTypeDef *hspi)
 			dma_tx_nextchar++;
 			dma_tx_buffer_counter++;
 		}
-		if(dma_tx_buffer_counter)
-		{
-			HAL_SPI_Transmit_DMA(&SPI_Handle, (uint8_t * )&dma_tx_buffer, 4 * (dma_tx_buffer_counter) );
-		} else {
-			stop_tick = HAL_GetTick();
-		}
+		HAL_SPI_Transmit_DMA(&SPI_Handle, (uint8_t * )&dma_tx_buffer, 4 * (dma_tx_buffer_counter) );
 	}
 
 	/**
