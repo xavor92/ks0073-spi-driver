@@ -12,6 +12,7 @@
 #include "stm32f1xx.h"
 #include "stm32f1xx_nucleo.h"
 #include "ks0073_lcd_drv.h"
+#include <stdlib.h>
 			
 
 
@@ -57,8 +58,7 @@ int main(void)
 	{
 		if(!HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13))
 		{
-			KS0073_DMA_Test();
-			HAL_Delay(1000);
+			KS0073_puts_dma("Dies ist ein String, welcher zum Testen der DMA Senderoutine Verwendet wird.");
 		}
 	}
 }

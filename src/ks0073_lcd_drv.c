@@ -14,10 +14,13 @@
 
 GPIO_InitTypeDef GPIO_InitType;
 SPI_HandleTypeDef SPI_Handle;
-uint8_t buffer = 0x50;
+uint32_t start_tick, stop_tick;
 
 #ifndef KS0073_NO_DMA
 DMA_HandleTypeDef hdma_rx, hdma_tx;
+KS0073_DataTypeDef dma_tx_buffer[DMA_TX_BUFFER_SIZE];
+uint8_t dma_tx_buffer_counter;
+char * dma_tx_nextchar;
 #endif //KS0073_NO_DMA
 
 /* local Functions, Declarations --------------------------------------------- */
@@ -30,19 +33,29 @@ uint8_t readBusyFlag();
 /* Functions ----------------------------------------------------------------- */
 
 
-extern void KS0073_DMA_Test(void)
+uint32_t getStoppuhr()
 {
-	static KS0073_DataTypeDef buffer[15];
-	uint8_t i = 0;
-	char Test[] = "uuuuuuuuuuuuu";
-	char * Testptr = Test;
-	while (*Testptr)
+	return stop_tick - start_tick;
+};
+
+HAL_StatusTypeDef KS0073_puts_dma(char * nextchar)
+{
+	if(SPI_Handle.State == HAL_SPI_STATE_READY)
 	{
-		DataConvert((uint8_t) *Testptr, KS0073_RW_CLEAR, KS0073_RS_SET, &buffer[i]);
-		i++;
-		Testptr++;
+		start_tick = HAL_GetTick();
+		dma_tx_nextchar = nextchar;
+		dma_tx_buffer_counter = 0;
+		while(*dma_tx_nextchar && dma_tx_buffer_counter < DMA_TX_BUFFER_SIZE)
+		{
+			DataConvert(*dma_tx_nextchar, KS0073_RW_CLEAR, KS0073_RS_SET, &dma_tx_buffer[dma_tx_buffer_counter]);
+			dma_tx_nextchar++;
+			dma_tx_buffer_counter++;
+		}
+		HAL_SPI_Transmit_DMA(&SPI_Handle, (uint8_t * )&dma_tx_buffer, 4 * (dma_tx_buffer_counter) );
+		return HAL_OK;
+	} else {
+		return HAL_BUSY;
 	}
-	HAL_SPI_Transmit_DMA(&SPI_Handle, (uint8_t * )&buffer, 4 * (i) );
 }
 
 /**
@@ -198,11 +211,13 @@ extern void KS0073_putc(char newchar)
  */
 extern void KS0073_puts(char * nextchar)
 {
+	start_tick = HAL_GetTick();
 	while(*nextchar)
 	{
 		KS0073_putc(*nextchar);
 		nextchar++;
 	}
+	stop_tick = HAL_GetTick();
 }
 
 /**
@@ -350,6 +365,29 @@ void HAL_SPI_MspDeInit(SPI_HandleTypeDef *hspi)
 
 
 #ifndef KS0073_NO_DMA
+
+	/**
+	  * @brief Tx Transfer completed callbacks
+	  * @param  hspi: pointer to a SPI_HandleTypeDef structure that contains
+	  *                the configuration information for SPI module.
+	  * @retval None
+	  */
+	void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi)
+	{
+		dma_tx_buffer_counter = 0;
+		while(*dma_tx_nextchar && dma_tx_buffer_counter < DMA_TX_BUFFER_SIZE)
+		{
+			DataConvert(*dma_tx_nextchar, KS0073_RW_CLEAR, KS0073_RS_SET, &dma_tx_buffer[dma_tx_buffer_counter]);
+			dma_tx_nextchar++;
+			dma_tx_buffer_counter++;
+		}
+		if(dma_tx_buffer_counter)
+		{
+			HAL_SPI_Transmit_DMA(&SPI_Handle, (uint8_t * )&dma_tx_buffer, 4 * (dma_tx_buffer_counter) );
+		} else {
+			stop_tick = HAL_GetTick();
+		}
+	}
 
 	/**
 	  * @brief  This function handles DMA Rx interrupt request.
