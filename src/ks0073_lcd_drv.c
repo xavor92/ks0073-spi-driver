@@ -14,7 +14,13 @@
 
 GPIO_InitTypeDef GPIO_InitType;
 SPI_HandleTypeDef SPI_Handle;
-uint8_t buffer = 0x50;
+
+#ifndef KS0073_NO_DMA
+DMA_HandleTypeDef hdma_rx, hdma_tx;
+KS0073_DataTypeDef dma_tx_buffer[DMA_TX_BUFFER_SIZE];
+uint8_t dma_tx_buffer_counter;
+char * dma_tx_nextchar;
+#endif //KS0073_NO_DMA
 
 /* local Functions, Declarations --------------------------------------------- */
 
@@ -24,6 +30,25 @@ void setDDAddress(uint8_t DDAddress);
 uint8_t readBusyFlag();
 
 /* Functions ----------------------------------------------------------------- */
+
+HAL_StatusTypeDef KS0073_puts_dma(char * nextchar)
+{
+	if(SPI_Handle.State == HAL_SPI_STATE_READY)
+	{
+		dma_tx_nextchar = nextchar;
+		dma_tx_buffer_counter = 0;
+		while(*dma_tx_nextchar && dma_tx_buffer_counter < DMA_TX_BUFFER_SIZE)
+		{
+			DataConvert(*dma_tx_nextchar, KS0073_RW_CLEAR, KS0073_RS_SET, &dma_tx_buffer[dma_tx_buffer_counter]);
+			dma_tx_nextchar++;
+			dma_tx_buffer_counter++;
+		}
+		HAL_SPI_Transmit_DMA(&SPI_Handle, (uint8_t * )&dma_tx_buffer, 4 * (dma_tx_buffer_counter) );
+		return HAL_OK;
+	} else {
+		return HAL_BUSY;
+	}
+}
 
 /**
   * @brief Init routine of KS0073 Controller, accessed over SPI
@@ -75,7 +100,8 @@ void KS0073_Init(KS0073_CursorTypeDef Cursor, KS0073_BlinkTypeDef Blink)
 
 	// 8 bit data, RE = 0 (Standard Register)
 	KS0073_Transmit_Byte(0x30, KS0073_RW_CLEAR, KS0073_RS_CLEAR, 2);
-	HAL_Delay(2);
+	while(readBusyFlag())
+				;
 
 	// enable blink, cursor & display
 	uint8_t setup = 0x0C;
@@ -87,9 +113,6 @@ void KS0073_Init(KS0073_CursorTypeDef Cursor, KS0073_BlinkTypeDef Blink)
 
 	// clear screen, Cursor to home position (address 0)
 	KS0073_clearScreen();
-
-	while(readBusyFlag())
-		;
 
 	// text direction left to right
 	KS0073_Transmit_Byte(0x06, KS0073_RW_CLEAR, KS0073_RS_CLEAR, 2);
@@ -125,6 +148,8 @@ void KS0073_Transmit_Byte(uint8_t Data, KS0073_RWTypeDef RW, KS0073_RSTypeDef RS
 void KS0073_clearScreen()
 {
 	KS0073_Transmit_Byte(0x01, KS0073_RW_CLEAR, KS0073_RS_CLEAR, 3);
+	while(readBusyFlag())
+			;
 }
 
 /**
@@ -156,13 +181,13 @@ extern void KS0073_newLine()
  */
 extern void KS0073_putc(char newchar)
 {
-	uint8_t pos = KS0073_readAddress();
 	if(newchar == '\n')
 	{
 		KS0073_newLine();
 	} else
 	{
 		#ifdef WRAPLINES
+			uint8_t pos = KS0073_readAddress();
 			if(pos % 0x20 >= LINE_LENGTH)
 			{
 				KS0073_newLine();
@@ -192,8 +217,7 @@ extern void KS0073_puts(char * nextchar)
 uint8_t KS0073_readAddress()
 {
 	uint8_t buffer;
-	buffer = 0x1F;
-	buffer |= KS0073_RW_BIT;
+	buffer = 0x1F | KS0073_RW_BIT;
 	HAL_SPI_Transmit(&SPI_Handle, &buffer, 1, 5);
 	buffer = 0;
 	HAL_SPI_TransmitReceive(&SPI_Handle, &buffer, &buffer, 1, 5);
@@ -265,7 +289,46 @@ void HAL_SPI_MspInit(SPI_HandleTypeDef *hspi)
 	InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
 	InitStruct.Pull = GPIO_NOPULL;
 	HAL_GPIO_Init(KS0073_SPI_NCS_PORT, &InitStruct);
+
+
+#ifndef KS0073_NO_DMA
+	KS0073_DMA_CLK_ENABLE();
+	hdma_tx.Instance 					= KS0073_DMA_TX_CHANNEL;
+	hdma_tx.Init.Direction				= DMA_MEMORY_TO_PERIPH;
+	hdma_tx.Init.PeriphInc				= DMA_PINC_DISABLE;
+	hdma_tx.Init.MemInc					= DMA_MINC_ENABLE;
+	hdma_tx.Init.PeriphDataAlignment 	= DMA_PDATAALIGN_BYTE;
+	hdma_tx.Init.MemDataAlignment    	= DMA_MDATAALIGN_BYTE;
+	hdma_tx.Init.Mode                	= DMA_NORMAL;
+	hdma_tx.Init.Priority            	= DMA_PRIORITY_LOW;
+
+	HAL_DMA_Init(&hdma_tx);
+
+	__HAL_LINKDMA(hspi, hdmatx,hdma_tx );
+
+	hdma_rx.Instance                 = KS0073_DMA_RX_CHANNEL;
+
+	hdma_rx.Init.Direction           = DMA_PERIPH_TO_MEMORY;
+	hdma_rx.Init.PeriphInc           = DMA_PINC_DISABLE;
+	hdma_rx.Init.MemInc              = DMA_MINC_ENABLE;
+	hdma_rx.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
+	hdma_rx.Init.MemDataAlignment    = DMA_MDATAALIGN_BYTE;
+	hdma_rx.Init.Mode                = DMA_NORMAL;
+	hdma_rx.Init.Priority            = DMA_PRIORITY_HIGH;
+
+	HAL_DMA_Init(&hdma_rx);
+	__HAL_LINKDMA(hspi, hdmarx, hdma_rx);
+
+	HAL_NVIC_SetPriority(KS0073_DMA_TX_IRQn, 1 , 1);
+	HAL_NVIC_EnableIRQ( KS0073_DMA_TX_IRQn);
+
+    //HAL_NVIC_SetPriority(KS0073_DMA_RX_IRQn, 1, 0);
+    //HAL_NVIC_EnableIRQ(KS0073_DMA_RX_IRQn);
+
+#endif //KS0073_NO_DMA
 }
+
+
 /**
   * @brief SPI MSP DeInit
   * 		SPI LowLevel DeInit of all Pin Out/InPuts & Clocks
@@ -279,7 +342,60 @@ void HAL_SPI_MspDeInit(SPI_HandleTypeDef *hspi)
 	HAL_GPIO_DeInit(KS0073_SPI_MOSI_PORT, KS0073_SPI_MOSI_PIN);
 	HAL_GPIO_DeInit(KS0073_SPI_MISO_PORT, KS0073_SPI_MISO_PIN);
 	HAL_GPIO_DeInit(KS0073_SPI_NCS_PORT, KS0073_SPI_NCS_PIN);
+	HAL_SPI_DeInit( hspi );
+
+	#ifndef KS0073_NO_DMA
+		KS0073_DMA_CLK_ENABLE();
+
+		HAL_DMA_DeInit(&hdma_tx);
+
+		HAL_NVIC_DisableIRQ(KS0073_DMA_TX_IRQn);
+	#endif //KS0073_NO_DMA
 }
+
+
+#ifndef KS0073_NO_DMA
+
+	/**
+	  * @brief Tx Transfer completed callbacks
+	  * @param  hspi: pointer to a SPI_HandleTypeDef structure that contains
+	  *                the configuration information for SPI module.
+	  * @retval None
+	  */
+	void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi)
+	{
+		dma_tx_buffer_counter = 0;
+		while(*dma_tx_nextchar && dma_tx_buffer_counter < DMA_TX_BUFFER_SIZE)
+		{
+			DataConvert(*dma_tx_nextchar, KS0073_RW_CLEAR, KS0073_RS_SET, &dma_tx_buffer[dma_tx_buffer_counter]);
+			dma_tx_nextchar++;
+			dma_tx_buffer_counter++;
+		}
+		HAL_SPI_Transmit_DMA(&SPI_Handle, (uint8_t * )&dma_tx_buffer, 4 * (dma_tx_buffer_counter) );
+	}
+
+	/**
+	  * @brief  This function handles DMA Rx interrupt request.
+	  * @param  None
+	  * @retval None
+	  */
+	void KS0073_DMA_RX_IRQHandler(void)
+	{
+	  HAL_DMA_IRQHandler( SPI_Handle.hdmarx);
+	}
+
+	/**
+	  * @brief  This function handles DMA Tx interrupt request.
+	  * @param  None
+	  * @retval None
+	  */
+	void KS0073_DMA_TX_IRQHandler(void)
+	{
+	  HAL_DMA_IRQHandler( SPI_Handle.hdmatx);
+	}
+
+
+#endif //KS0073_NO_DMA
 
 /* local Functions, Definitions ---------------------------------------------- */
 
@@ -304,6 +420,7 @@ void DataConvert(uint8_t Data, KS0073_RWTypeDef RW, KS0073_RSTypeDef RS, KS0073_
 	}
 	buffer->data_low = Data & 0xF;
 	buffer->data_high = (Data >> 4);
+	buffer->delay = 0;
 }
 
 /**
