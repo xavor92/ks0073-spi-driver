@@ -210,6 +210,12 @@ extern void KS0073_puts(char * nextchar)
 	}
 }
 
+
+extern HAL_SPI_StateTypeDef KS0073_getSPIState()
+{
+	return SPI_Handle.State;
+}
+
 /**
  * reads BusyFlag & address
  * @return Bit 7 - BusyFlag / Bit 6:0 address

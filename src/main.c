@@ -53,12 +53,22 @@ int main(void)
 
 	HAL_GPIO_Init(GPIOC, &ButtonInit);
 	__HAL_RCC_GPIOC_CLK_ENABLE();
-
+	KS0073_puts("KS0073 Display\nusing SPI Inferface\n");
+	KS0073_newLine();
+	KS0073_puts_dma("for STM32 Family");
+	while(KS0073_getSPIState() != HAL_SPI_STATE_READY)
+		;
+	KS0073_gotoxy(0, 2);
+	KS0073_putc('S');
+	KS0073_puts("oftware by Olli W.");
 	while (1)
 	{
 		if(!HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13))
 		{
-			KS0073_puts_dma("Dies ist ein String, welcher zum Testen der DMA Senderoutine Verwendet wird.");
+			KS0073_clearScreen();
+			KS0073_puts_dma("It works! Even with longer DMA transfers on buttonpress.");
+			while(KS0073_getSPIState() != HAL_SPI_STATE_READY)
+					;
 		}
 	}
 }

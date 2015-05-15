@@ -173,6 +173,7 @@ extern void KS0073_gotoxy(uint8_t posx, uint8_t posy);
 extern void KS0073_newLine();
 extern void KS0073_putc(char newchar);
 extern void KS0073_puts(char * nextchar);
+extern HAL_SPI_StateTypeDef KS0073_getSPIState();
 extern uint8_t KS0073_readAddress();
 
 #ifndef KS0073_NO_DMA
