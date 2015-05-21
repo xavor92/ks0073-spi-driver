@@ -9,6 +9,10 @@
 */
 
 #include "ks0073_lcd_drv.h"
+/* defines ------------------------------------------------------------------- */
+
+//rows of n set bits
+
 
 /* local Variables ----------------------------------------------------------- */
 
@@ -228,6 +232,107 @@ uint8_t KS0073_readAddress()
 	buffer = 0;
 	HAL_SPI_TransmitReceive(&SPI_Handle, &buffer, &buffer, 1, 5);
 	return buffer;
+}
+
+/**
+ * Clear the Graphic Area
+ * @param graphicAreaPnt
+ */
+extern void KS0073_ClearGraphicArea(KS0073_GraphicAreaSmallTypeDef * graphicAreaPnt)
+{
+	uint8_t i = 0;
+	for(;i < 16; i++)
+	{
+		graphicAreaPnt->Line[i] = 0;
+	}
+}
+
+/**
+ * Prints graphicArea to position
+ * @param graphicAreaPnt
+ * @param xpos
+ * @param ypos
+ */
+extern void KS0073_PrintGraphicArea(KS0073_GraphicAreaSmallTypeDef * graphicAreaPnt, uint8_t xpos, uint8_t ypos)
+{
+	uint8_t address = 0;
+	for(; address < 8; address++)
+	{
+		uint8_t byte, line;
+		byte = 0x40;
+		byte |= (address << 3);
+		KS0073_Transmit_Byte(byte, KS0073_RW_CLEAR, KS0073_RS_CLEAR, 1);
+		for(line = 0; line < 8; line++)
+		{
+			uint8_t shiftCnt = ((7 - address)%4)*5;
+			uint8_t data = ( graphicAreaPnt->Line[line + (address/4) * 8] >> shiftCnt ) & 0x1F;
+			KS0073_Transmit_Byte(data, KS0073_RW_CLEAR, KS0073_RS_SET, 1);
+		}
+	}
+	KS0073_gotoxy(xpos,ypos);
+	KS0073_putc(0);
+	KS0073_putc(1);
+	KS0073_putc(2);
+	KS0073_putc(3);
+	KS0073_gotoxy(xpos,ypos+1);
+	KS0073_putc(4);
+	KS0073_putc(5);
+	KS0073_putc(6);
+	KS0073_putc(7);
+}
+
+/**
+ * Draws a horizontal Line into graphicAreaPnt at point x1/y1 of length length
+ * @param graphicAreaPnt
+ * @param x1
+ * @param y1
+ * @param length
+ */
+extern void KS0073_DrawHorizontalLine(KS0073_GraphicAreaSmallTypeDef * graphicAreaPnt, uint8_t x1, uint8_t y1, uint8_t length)
+{
+	//create a line of length x
+	uint32_t line = 1;
+	uint8_t i;
+	for(i = 1; i<length;i++)
+	{
+		line <<= 1;
+		line |= 1;
+	}
+	graphicAreaPnt->Line[15-y1] |= line << (19  + 1 - x1 - length);
+}
+
+/**
+ * Draws a vertical Line into graphicAreaPnt at point x1/y1 of length length
+ * @param graphicAreaPnt
+ * @param x1
+ * @param y1
+ * @param length
+ */
+extern void KS0073_DrawVerticalLine(KS0073_GraphicAreaSmallTypeDef * graphicAreaPnt, uint8_t x1, uint8_t y1, uint8_t length)
+{
+	uint32_t line = 1 << (19 - x1);
+	uint8_t i;
+	for(i = 16 - length - y1; i < 16 - y1; i++)
+	{
+		graphicAreaPnt->Line[i] |= line;
+	}
+}
+
+/**
+ * Draws a square into GraphicArea
+ * @param graphicAreaPnt Pointer to GraphicArea
+ * @param x1 x lower
+ * @param y1 y left
+ * @param x2 x upper
+ * @param y2 y right
+ */
+extern void KS0073_DrawSquare(KS0073_GraphicAreaSmallTypeDef * graphicAreaPnt, uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2)
+{
+	//draw horizontal Lines
+	KS0073_DrawHorizontalLine(graphicAreaPnt, x1, y1, x2 - x1 + 1 );
+	KS0073_DrawHorizontalLine(graphicAreaPnt, x1, y2, x2 - x1 +1 );
+	KS0073_DrawVerticalLine(graphicAreaPnt, x1, y1, y2-y1+1);
+	KS0073_DrawVerticalLine(graphicAreaPnt, x2, y1, y2-y1+1);
 }
 
 /**

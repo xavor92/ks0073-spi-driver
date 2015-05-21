@@ -129,6 +129,14 @@
 
 //@}
 /* Exported types ------------------------------------------------------------*/
+/**
+ * Type for a small grapical Area of 4*2 Chars (4 Wide, 2 High), each with 5*8 Pixels
+ * Resulting in a Area of 20*16 Pixel
+ */
+typedef struct
+{
+	uint32_t Line[16];
+} KS0073_GraphicAreaSmallTypeDef;
 
 typedef struct
 {
@@ -175,6 +183,11 @@ extern void KS0073_putc(char newchar);
 extern void KS0073_puts(char * nextchar);
 extern HAL_SPI_StateTypeDef KS0073_getSPIState();
 extern uint8_t KS0073_readAddress();
+extern void KS0073_ClearGraphicArea(KS0073_GraphicAreaSmallTypeDef * graphicAreaPnt);
+extern void KS0073_PrintGraphicArea(KS0073_GraphicAreaSmallTypeDef * graphicAreaPnt, uint8_t xpos, uint8_t ypos);
+extern void KS0073_DrawHorizontalLine(KS0073_GraphicAreaSmallTypeDef * graphicAreaPnt, uint8_t x1, uint8_t y1, uint8_t length);
+extern void KS0073_DrawVerticalLine(KS0073_GraphicAreaSmallTypeDef * graphicAreaPnt, uint8_t x1, uint8_t y1, uint8_t length);
+extern void KS0073_DrawSquare(KS0073_GraphicAreaSmallTypeDef * graphicAreaPnt, uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2);
 
 #ifndef KS0073_NO_DMA
 extern void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi);

@@ -44,7 +44,7 @@ int main(void)
 	SystemClock_Config();
 
 	/* Init Display */
-	KS0073_Init(KS0073_CursorOn, KS0073_BlinkOn);
+	KS0073_Init(KS0073_CursorOff, KS0073_BlinkOff);
 	GPIO_InitTypeDef ButtonInit;
 	ButtonInit.Mode = GPIO_MODE_INPUT;
 	ButtonInit.Pin = GPIO_PIN_13;
@@ -53,24 +53,32 @@ int main(void)
 
 	HAL_GPIO_Init(GPIOC, &ButtonInit);
 	__HAL_RCC_GPIOC_CLK_ENABLE();
-	KS0073_puts("KS0073 Display\nusing SPI Inferface\n");
-	KS0073_newLine();
-	KS0073_puts_dma("for STM32 Family");
-	while(KS0073_getSPIState() != HAL_SPI_STATE_READY)
-		;
-	KS0073_gotoxy(0, 2);
-	KS0073_putc('S');
-	KS0073_puts("oftware by Olli W.");
-	while (1)
+	static KS0073_GraphicAreaSmallTypeDef test;
+	uint32_t delay = 300;
+	while(1)
 	{
-		if(!HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13))
-		{
-			KS0073_clearScreen();
-			KS0073_puts_dma("It works! Even with longer DMA transfers on buttonpress.");
-			while(KS0073_getSPIState() != HAL_SPI_STATE_READY)
-					;
-		}
+		KS0073_ClearGraphicArea(&test);
+		KS0073_PrintGraphicArea(&test, 0, 0);
+		KS0073_DrawSquare(&test, 0, 0, 19, 15);
+		KS0073_DrawSquare(&test, 3, 3, 16, 12);
+		KS0073_DrawSquare(&test, 6, 6, 13, 9);
+		KS0073_PrintGraphicArea(&test, 0, 0);
+		HAL_Delay(delay);
+		KS0073_ClearGraphicArea(&test);
+		KS0073_PrintGraphicArea(&test, 0, 0);
+		KS0073_DrawSquare(&test, 1, 1, 18, 14);
+		KS0073_DrawSquare(&test, 4, 4, 15, 11);
+		KS0073_DrawSquare(&test, 7, 7, 12, 8);
+		KS0073_PrintGraphicArea(&test, 0, 0);
+		HAL_Delay(delay);
+		KS0073_ClearGraphicArea(&test);
+		KS0073_PrintGraphicArea(&test, 0, 0);
+		KS0073_DrawSquare(&test, 2, 2, 17, 13);
+		KS0073_DrawSquare(&test, 5, 5, 14, 10);
+		KS0073_PrintGraphicArea(&test, 0, 0);
+		HAL_Delay(delay);
 	}
+	return 0;
 }
 
 /**
