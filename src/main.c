@@ -77,17 +77,51 @@ int main(void)
 	__HAL_RCC_GPIOC_CLK_ENABLE();
 	y_copter = 4;
 	drawCopter(&Obj, 3, y_copter);
+	getverticalSpeed();
+	getverticalSpeed();
+	getverticalSpeed();
+	getverticalSpeed();
 	KS0073_gotoxy(4,0);
 	KS0073_puts("STM32Copter");
 	KS0073_gotoxy(2,2);
 	KS0073_puts("Blue Button = ");
 	KS0073_putc(0xDE);
-	KS0073_gotoxy(3,3);
-	KS0073_puts("Press to Play!");
+	KS0073_gotoxy(1,3);
+	KS0073_puts("Hold Blue to Play!");
 	//Wait for Press to start
-	while(HAL_GPIO_ReadPin(GPIOC,GPIO_PIN_13) != GPIO_PIN_RESET)
-		;
+	int8_t i = -4;
+	int8_t startlevel = 1, trigger = 1;
+	while(i < 4)
+	{
+		KS0073_gotoxy(1,1);
+		KS0073_puts("Startlevel: ");
+		KS0073_put_int(startlevel);
+		i = getverticalSpeed();
+		if(i > -3 && trigger == 0 && HAL_GPIO_ReadPin(GPIOC,GPIO_PIN_13) == GPIO_PIN_SET)
+		{
+			trigger = 1;
+			startlevel++;
+		}
+		if(i == -4)
+			trigger = 0;
+		HAL_Delay(125);
+		/*KS0073_gotoxy(0,1);
+		if(i < 0){
+			KS0073_putc('-');
+			KS0073_put_int(-i);
+		} else {
+			KS0073_putc('+');
+			KS0073_put_int(i);
+		}
+		KS0073_gotoxy(8,1);
+		KS0073_put_int(trigger);*/
+	}
 	KS0073_clearScreen();
+	KS0073_gotoxy(4,0);
+	KS0073_putc(0x14);
+	KS0073_gotoxy(4,1);
+	KS0073_putc(0x14);
+	StepCnt=100 * (startlevel - 1);
 	while(1)
 	{
 		while(HAL_GetTick() % SPEED/level != 0)
@@ -141,9 +175,9 @@ int main(void)
 		}
 		scrollLeft(&BG);
 		StepCnt++;
-		KS0073_gotoxy(10, 0);
+		KS0073_gotoxy(9, 0);
 		KS0073_puts("Score:");
-		KS0073_gotoxy(10, 1);
+		KS0073_gotoxy(9, 1);
 		KS0073_put_int(StepCnt);
 	}
 	return 0;
@@ -245,9 +279,11 @@ int8_t getverticalSpeed()
 
 void placeObstacle()
 {
-	if(StepCnt%(20/level) == 0)
+	uint8_t div = (30/level);
+	if(div < 10) div = 10;
+	if(StepCnt%div == 0)
 	{
-		uint8_t heigth = rand() % 5;
+		uint8_t heigth = rand() % 5+level;
 		uint8_t pos = rand() % (15 - heigth);
 		KS0073_DrawVerticalLine(&BG, 19, pos, heigth);
 	}
