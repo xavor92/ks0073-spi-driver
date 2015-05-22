@@ -214,6 +214,14 @@ extern void KS0073_puts(char * nextchar)
 	}
 }
 
+extern void KS0073_put_int(uint32_t integer)
+{
+	//KS0073_putc((integer%100000/10000) + 48);
+	KS0073_putc((integer%10000/1000) + 48);
+	KS0073_putc((integer%1000/100) + 48);
+	KS0073_putc(((integer%100)/10) + 48);
+	KS0073_putc((integer%10) + 48);
+}
 
 extern HAL_SPI_StateTypeDef KS0073_getSPIState()
 {
@@ -282,6 +290,20 @@ extern void KS0073_PrintGraphicArea(KS0073_GraphicAreaSmallTypeDef * graphicArea
 }
 
 /**
+ * Merges Area2 into Area1
+ * @param Area1
+ * @param Area2
+ */
+extern void KS0073_MergeGraphicAreas(KS0073_GraphicAreaSmallTypeDef * Area1, KS0073_GraphicAreaSmallTypeDef * Area2)
+{
+	uint8_t i;
+	for(i = 0; i < 16; i++)
+	{
+		Area1->Line[i] |= Area2->Line[i];
+	}
+}
+
+/**
  * Draws a horizontal Line into graphicAreaPnt at point x1/y1 of length length
  * @param graphicAreaPnt
  * @param x1
@@ -317,6 +339,26 @@ extern void KS0073_DrawVerticalLine(KS0073_GraphicAreaSmallTypeDef * graphicArea
 		graphicAreaPnt->Line[i] |= line;
 	}
 }
+
+/**
+ * Tests if same bits in two KS0073_GraphicAreaSmallTypeDefs are set
+ * @param backgroundArea - the surrundings
+ * @param Object - the object
+ * @return 1 for collision, 0 for No Collision
+ */
+extern int KS0073_CollisionTest(KS0073_GraphicAreaSmallTypeDef * backgroundArea, KS0073_GraphicAreaSmallTypeDef * Object)
+{
+	uint8_t i;
+	for(i = 0; i < 16; i++)
+	{
+		if(backgroundArea->Line[i] & Object->Line[i])
+		{
+			return 1;
+		}
+	}
+	return 0;
+}
+
 
 /**
  * Draws a square into GraphicArea

@@ -17,7 +17,29 @@
 
 
 /* Private function prototypes -----------------------------------------------*/
+
+typedef struct {
+	uint8_t Step;
+	uint8_t yValue;
+	uint8_t Heigth;
+} HindernisTypeDef;
+
 void SystemClock_Config(void);
+void drawCopter(KS0073_GraphicAreaSmallTypeDef * area, uint8_t x, uint8_t y);
+void scrollLeft(KS0073_GraphicAreaSmallTypeDef * area);
+int8_t getverticalSpeed();
+void placeObstacle();
+
+static KS0073_GraphicAreaSmallTypeDef BG, Obj, Screen;
+static int8_t button_history[4];
+static uint8_t y_copter = 0, level = 1;
+static uint32_t StepCnt = 0;
+#define MAX_RAND 100
+#define SEED 42
+#define SPEED 100
+
+
+
 
 
 /* Private functions ---------------------------------------------------------*/
@@ -53,33 +75,83 @@ int main(void)
 
 	HAL_GPIO_Init(GPIOC, &ButtonInit);
 	__HAL_RCC_GPIOC_CLK_ENABLE();
-	static KS0073_GraphicAreaSmallTypeDef test;
-	uint32_t delay = 300;
+	y_copter = 4;
+	drawCopter(&Obj, 3, y_copter);
+	KS0073_gotoxy(4,0);
+	KS0073_puts("STM32Copter");
+	KS0073_gotoxy(2,2);
+	KS0073_puts("Blue Button = ");
+	KS0073_putc(0xDE);
+	KS0073_gotoxy(3,3);
+	KS0073_puts("Press to Play!");
+	//Wait for Press to start
+	while(HAL_GPIO_ReadPin(GPIOC,GPIO_PIN_13) != GPIO_PIN_RESET)
+		;
+	KS0073_clearScreen();
 	while(1)
 	{
-		KS0073_ClearGraphicArea(&test);
-		KS0073_PrintGraphicArea(&test, 0, 0);
-		KS0073_DrawSquare(&test, 0, 0, 19, 15);
-		KS0073_DrawSquare(&test, 3, 3, 16, 12);
-		KS0073_DrawSquare(&test, 6, 6, 13, 9);
-		KS0073_PrintGraphicArea(&test, 0, 0);
-		HAL_Delay(delay);
-		KS0073_ClearGraphicArea(&test);
-		KS0073_PrintGraphicArea(&test, 0, 0);
-		KS0073_DrawSquare(&test, 1, 1, 18, 14);
-		KS0073_DrawSquare(&test, 4, 4, 15, 11);
-		KS0073_DrawSquare(&test, 7, 7, 12, 8);
-		KS0073_PrintGraphicArea(&test, 0, 0);
-		HAL_Delay(delay);
-		KS0073_ClearGraphicArea(&test);
-		KS0073_PrintGraphicArea(&test, 0, 0);
-		KS0073_DrawSquare(&test, 2, 2, 17, 13);
-		KS0073_DrawSquare(&test, 5, 5, 14, 10);
-		KS0073_PrintGraphicArea(&test, 0, 0);
-		HAL_Delay(delay);
+		while(HAL_GetTick() % SPEED/level != 0)
+			;
+
+		int8_t i = getverticalSpeed()/2;
+		if(i > 1) i = 1;
+		if(i < -1) i = -1;
+		KS0073_gotoxy(0,3);
+		/*if(i < 0)
+		{
+
+			KS0073_putc('-');
+		} else {
+			KS0073_gotoxy(0,3);
+			KS0073_putc('+');
+		}
+		if(i == 0)
+			KS0073_putc('0');
+		if(i == 1 || i == -1)
+					KS0073_putc('1');
+		if(i == 2 || i == -2)
+					KS0073_putc('2');*/
+		y_copter += i;
+		if(y_copter < 2) y_copter = 2;
+		if(y_copter == 255) y_copter = 2;
+		if(y_copter > 14) y_copter = 14;
+		KS0073_ClearGraphicArea(&Obj);
+		drawCopter(&Obj, 2, y_copter);
+		KS0073_puts("H");
+		KS0073_putc(0x7C);
+		KS0073_puts("he:");
+		KS0073_put_int(y_copter);
+		KS0073_puts(" Level:");
+		KS0073_put_int(level);
+		placeObstacle();
+		KS0073_ClearGraphicArea(&Screen);
+		KS0073_MergeGraphicAreas(&Screen, &Obj);
+		KS0073_MergeGraphicAreas(&Screen, &BG);
+		KS0073_PrintGraphicArea(&Screen, 0, 0);
+		if(KS0073_CollisionTest(&BG, &Obj))
+		{
+			KS0073_gotoxy(0,2);
+			KS0073_puts("Collision!!!");
+			while(1)
+				;
+
+		} else {
+			KS0073_gotoxy(0,2);
+			KS0073_puts("No Collision");
+		}
+		scrollLeft(&BG);
+		StepCnt++;
+		KS0073_gotoxy(10, 0);
+		KS0073_puts("Score:");
+		KS0073_gotoxy(10, 1);
+		KS0073_put_int(StepCnt);
 	}
 	return 0;
 }
+
+
+
+
 
 /**
   * @brief  System Clock Configuration
@@ -134,4 +206,51 @@ void SystemClock_Config(void)
 void assert_failed(uint8_t* file, uint32_t line)
 {
 	line = *file;
+}
+
+void drawCopter(KS0073_GraphicAreaSmallTypeDef * area, uint8_t x, uint8_t y)
+{
+	KS0073_DrawHorizontalLine(area, x - 2, y + 1, 5);
+	KS0073_DrawHorizontalLine(area, x, y, 1);
+	KS0073_DrawHorizontalLine(area, x-2, y-1, 1);
+	KS0073_DrawHorizontalLine(area, x, y-1, 2);
+	KS0073_DrawHorizontalLine(area, x-1, y-2,4);
+
+}
+
+
+void scrollLeft(KS0073_GraphicAreaSmallTypeDef * area)
+{
+	uint8_t i;
+	for(i = 0; i < 16; i++)
+	{
+		area->Line[i] <<= 1;
+	}
+}
+
+
+int8_t getverticalSpeed()
+{
+	button_history[3] = button_history[2];
+	button_history[2] = button_history[1];
+	button_history[1] = button_history[0];
+	if(HAL_GPIO_ReadPin(GPIOC,GPIO_PIN_13) == GPIO_PIN_RESET)
+	{
+		button_history[0] = 1;
+	} else {
+		button_history[0] = -1;
+	}
+	return (button_history[0] + button_history[1] + button_history[2] + button_history[3]);
+}
+
+void placeObstacle()
+{
+	if(StepCnt%(20/level) == 0)
+	{
+		uint8_t heigth = rand() % 5;
+		uint8_t pos = rand() % (15 - heigth);
+		KS0073_DrawVerticalLine(&BG, 19, pos, heigth);
+	}
+	level = (StepCnt/100)+1;
+	if(level > 5) level = 5;
 }

@@ -181,12 +181,15 @@ extern void KS0073_gotoxy(uint8_t posx, uint8_t posy);
 extern void KS0073_newLine();
 extern void KS0073_putc(char newchar);
 extern void KS0073_puts(char * nextchar);
+extern void KS0073_put_int(uint32_t integer);
 extern HAL_SPI_StateTypeDef KS0073_getSPIState();
 extern uint8_t KS0073_readAddress();
 extern void KS0073_ClearGraphicArea(KS0073_GraphicAreaSmallTypeDef * graphicAreaPnt);
 extern void KS0073_PrintGraphicArea(KS0073_GraphicAreaSmallTypeDef * graphicAreaPnt, uint8_t xpos, uint8_t ypos);
+extern void KS0073_MergeGraphicAreas(KS0073_GraphicAreaSmallTypeDef * Area1, KS0073_GraphicAreaSmallTypeDef * Area2);
 extern void KS0073_DrawHorizontalLine(KS0073_GraphicAreaSmallTypeDef * graphicAreaPnt, uint8_t x1, uint8_t y1, uint8_t length);
 extern void KS0073_DrawVerticalLine(KS0073_GraphicAreaSmallTypeDef * graphicAreaPnt, uint8_t x1, uint8_t y1, uint8_t length);
+extern int KS0073_CollisionTest(KS0073_GraphicAreaSmallTypeDef * backgroundArea, KS0073_GraphicAreaSmallTypeDef * Object);
 extern void KS0073_DrawSquare(KS0073_GraphicAreaSmallTypeDef * graphicAreaPnt, uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2);
 
 #ifndef KS0073_NO_DMA
